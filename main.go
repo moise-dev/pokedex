@@ -2,12 +2,11 @@ package main
 
 import (
 	"bufio"
-	"encoding/json"
-	"errors"
 	"fmt"
-	"net/http"
 	"os"
 	"strings"
+
+	"github.com/moise-dev/pokedex/api"
 )
 
 type cliCommand struct {
@@ -34,31 +33,16 @@ func commandHelp() error {
 }
 
 func commandMap() error {
-	type Map struct {
-		Results []struct {
-			Name string `json:"name"`
+	response, err := api.GetLocation()
+
+	if err == nil {
+		for _, city := range response.Results {
+			fmt.Println(city.Name)
 		}
-	}
-	fullURL := "https://pokeapi.co/api/v2/location-area/"
-	resp, err := http.Get(fullURL)
-	if err != nil {
-		os.Exit(1)
-		return errors.New("http connection error")
-	}
-	var response Map
-	decoder := json.NewDecoder(resp.Body)
-	err = decoder.Decode(&response)
-
-	if err != nil {
-		os.Exit(2)
-		return errors.New("fail to decode response")
+		return nil
 	}
 
-	for _, city := range response.Results {
-		fmt.Println(city.Name)
-	}
-
-	return nil
+	return err
 }
 
 func main() {
