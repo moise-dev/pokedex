@@ -8,13 +8,17 @@ import (
 )
 
 type Map struct {
+	Next    string `json:"next"`
+	Prev    string `json:"previous"`
 	Results []struct {
 		Name string `json:"name"`
 	}
 }
 
-func GetLocation() (Map, error) {
-	fullURL := "https://pokeapi.co/api/v2/location-area/"
+func GetLocation(fullURL string) (Map, error) {
+	if fullURL == "" {
+		fullURL = "https://pokeapi.co/api/v2/location-area/"
+	}
 	resp, err := http.Get(fullURL)
 	if err != nil {
 		os.Exit(1)
