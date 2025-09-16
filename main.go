@@ -6,7 +6,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/moise-dev/pokedex/api"
+	"github.com/moise-dev/pokedex/internal/api"
 )
 
 type Config struct {
@@ -31,7 +31,13 @@ func commandExit(c *Config) error {
 }
 
 func commandHelp(c *Config) error {
-	fmt.Println("Welcome to the Pokedex!\nUsage:\n\nhelp: Displays a help message\nexit: Exit the Pokedex")
+	fmt.Println(`Welcome to the Pokedex!
+	Usage:
+
+	help:  Displays a help message
+	map:   Display 20 locations
+	mapb:  Display previous 20 locations
+	exit:  Exit the Pokedex`)
 	return nil
 
 }
