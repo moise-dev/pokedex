@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/moise-dev/pokedex/internal/api"
 	"github.com/moise-dev/pokedex/internal/pokecache"
@@ -44,7 +45,7 @@ func commandHelp(c *Config) error {
 }
 
 func commandMapGeneric(c *Config, url string) error {
-	cache := pokecache.NewCache(7)
+	cache := pokecache.NewCache(7 * time.Second)
 	response, err := api.GetLocation(url, &cache)
 	if err != nil {
 		return err
