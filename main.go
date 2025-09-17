@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/moise-dev/pokedex/internal/api"
+	"github.com/moise-dev/pokedex/internal/pokecache"
 )
 
 type Config struct {
@@ -43,13 +44,21 @@ func commandHelp(c *Config) error {
 }
 
 func commandMapGeneric(c *Config, url string) error {
-	response, err := api.GetLocation(url)
+	cache := pokecache.NewCache(7)
+	response, err := api.GetLocation(url, &cache)
 	if err != nil {
 		return err
 	}
 
-	c.prev = response.Prev
-	c.next = response.Next
+	c.prev = ""
+	c.next = ""
+	if response.Prev != nil {
+		c.prev = *response.Prev
+	}
+
+	if response.Next != nil {
+		c.next = *response.Next
+	}
 
 	for _, city := range response.Results {
 		fmt.Println(city.Name)
@@ -111,7 +120,11 @@ func main() {
 			fmt.Println("Unknown command")
 			continue
 		}
-		command.callback(&config)
+		err := command.callback(&config)
+		if err != nil {
+			fmt.Println(err)
+			os.Exit(1)
+		}
 
 	}
 

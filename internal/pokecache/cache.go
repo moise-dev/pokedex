@@ -28,7 +28,7 @@ func (c *Cache) Get(key string) ([]byte, bool) {
 
 }
 
-func (c *Cache) replLoop(interval time.Duration) {
+func (c *Cache) reapLoop(interval time.Duration) {
 	ticker := time.NewTicker(interval * time.Second)
 	done := make(chan bool)
 
@@ -52,6 +52,6 @@ func NewCache(duration time.Duration) Cache {
 	c := Cache{
 		entries: make(map[string]cacheEntry),
 	}
-	c.replLoop(duration)
+	c.reapLoop(duration)
 	return c
 }

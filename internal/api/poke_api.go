@@ -3,30 +3,52 @@ package api
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
+	"io"
 	"net/http"
-	"os"
+
+	"github.com/moise-dev/pokedex/internal/pokecache"
 )
 
 type Map struct {
-	Next    string `json:"next"`
-	Prev    string `json:"previous"`
+	Next    *string `json:"next"`
+	Prev    *string `json:"previous"`
 	Results []struct {
 		Name string `json:"name"`
 	}
 }
 
-func GetLocation(fullURL string) (Map, error) {
+func GetLocation(fullURL string, cache *pokecache.Cache) (Map, error) {
 	if fullURL == "" {
 		fullURL = "https://pokeapi.co/api/v2/location-area/"
 	}
-	resp, err := http.Get(fullURL)
-	if err != nil {
-		os.Exit(1)
-		return Map{}, errors.New("http connection error")
+
+	var respBytes []byte
+
+	respBytes, present := cache.Get(fullURL)
+
+	if present == false {
+		resp, err := http.Get(fullURL)
+		if err != nil {
+			return Map{}, errors.New("http connection error")
+		}
+
+		defer resp.Body.Close()
+
+		respBytes, err = io.ReadAll(resp.Body)
+
+		if err != nil {
+			return Map{}, errors.New("cannot read http data")
+		}
+		cache.Add(fullURL, respBytes)
 	}
+
 	var response Map
-	decoder := json.NewDecoder(resp.Body)
-	err = decoder.Decode(&response)
+	err := json.Unmarshal(respBytes, &response)
+	if err != nil {
+		fmt.Println(err)
+		return Map{}, errors.New("cannot unmarshal data")
+	}
 
 	return response, nil
 
