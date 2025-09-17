@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"errors"
 	"fmt"
 	"os"
 	"strings"
@@ -19,20 +20,20 @@ type Config struct {
 type cliCommand struct {
 	name        string
 	description string
-	callback    func(*Config) error
+	callback    func(*Config, *pokecache.Cache, ...string) error
 }
 
 func cleanInput(text string) []string {
 	return strings.Split(strings.TrimSpace(strings.ToLower(text)), " ")
 
 }
-func commandExit(c *Config) error {
+func commandExit(c *Config, cache *pokecache.Cache, args ...string) error {
 	fmt.Printf("Closing the Pokedex... Goodbye!")
 	os.Exit(0)
 	return nil
 }
 
-func commandHelp(c *Config) error {
+func commandHelp(c *Config, cache *pokecache.Cache, args ...string) error {
 	fmt.Println(`Welcome to the Pokedex!
 	Usage:
 
@@ -44,9 +45,8 @@ func commandHelp(c *Config) error {
 
 }
 
-func commandMapGeneric(c *Config, url string) error {
-	cache := pokecache.NewCache(7 * time.Second)
-	response, err := api.GetLocation(url, &cache)
+func commandMapGeneric(c *Config, cache *pokecache.Cache, url string) error {
+	response, err := api.GetLocation(url, cache)
 	if err != nil {
 		return err
 	}
@@ -68,20 +68,37 @@ func commandMapGeneric(c *Config, url string) error {
 	return nil
 }
 
-func commandMapBack(c *Config) error {
-	err := commandMapGeneric(c, c.prev)
+func commandMapBack(c *Config, cache *pokecache.Cache, args ...string) error {
+	err := commandMapGeneric(c, cache, c.prev)
 	return err
 
 }
 
-func commandMapNext(c *Config) error {
-	err := commandMapGeneric(c, c.next)
+func commandMapNext(c *Config, cache *pokecache.Cache, args ...string) error {
+	err := commandMapGeneric(c, cache, c.next)
 	return err
 
+}
+
+func commandExplore(c *Config, cache *pokecache.Cache, locationName ...string) error {
+
+	if len(locationName) != 2 {
+		return errors.New("no location or too many locations provided")
+	}
+
+	data, err := api.GetPokemonInLocation(locationName[1], cache)
+
+	for _, encounter := range data.Encounters {
+		fmt.Println(encounter.Pokemon.Name)
+	}
+
+	return err
 }
 
 func main() {
 	var config Config
+	cache := pokecache.NewCache(7 * time.Second)
+
 	commands := map[string]cliCommand{
 		"exit": {
 			name:        "exit",
@@ -105,6 +122,11 @@ func main() {
 			description: "map back",
 			callback:    commandMapBack,
 		},
+		"explore": {
+			name:        "explore",
+			description: "return pokemons in a certain area",
+			callback:    commandExplore,
+		},
 	}
 
 	scanner := bufio.NewScanner(os.Stdin)
@@ -121,7 +143,8 @@ func main() {
 			fmt.Println("Unknown command")
 			continue
 		}
-		err := command.callback(&config)
+
+		err := command.callback(&config, &cache, cleanText...)
 		if err != nil {
 			fmt.Println(err)
 			os.Exit(1)
