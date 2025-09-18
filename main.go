@@ -18,11 +18,7 @@ type MapMovement struct {
 	next string
 }
 
-type Pokemon struct {
-	name string
-}
-
-type Pokedex map[string]Pokemon
+type Pokedex map[string]api.PokemonInfo
 
 type App struct {
 	mapmove MapMovement
@@ -111,21 +107,46 @@ func commandExplore(app *App, locationName ...string) error {
 }
 
 func commandCatch(app *App, pokemonName ...string) error {
-	experience, err := api.CatchPokemon(pokemonName[1], &app.cache)
+	name := pokemonName[1]
+	pokemonInfo, err := api.CatchPokemon(name, &app.cache)
 	if err != nil {
 		return err
 	}
+	experience := pokemonInfo.BaseExperience
 
-	fmt.Printf("Throwing a Pokeball at %s...\n", pokemonName[1])
+	fmt.Printf("Throwing a Pokeball at %s...\n", name)
 	caughtChance := rand.Intn(experience)
 	if caughtChance > experience/2 {
-		fmt.Printf("%s was caught!\n", pokemonName[1])
+		fmt.Printf("%s was caught!\n", name)
+		app.pokedex[name] = pokemonInfo
 
 	} else {
-		fmt.Printf("%s escaped!\n", pokemonName[1])
+		fmt.Printf("%s escaped!\n", name)
 
 	}
 
+	return nil
+}
+
+func commandInspect(app *App, pokemonName ...string) error {
+	entry, found := app.pokedex[pokemonName[1]]
+	if found == false {
+		fmt.Printf("you have not caught that pokemon\n")
+		return nil
+	}
+
+	fmt.Printf("Name: %s\n", pokemonName[1])
+	fmt.Printf("Height: %d\n", entry.Height)
+	fmt.Printf("Weight: %d\n", entry.Weight)
+	fmt.Printf("Stats:\n")
+	for _, stat := range entry.Stats {
+		fmt.Printf("  -%s: %d\n", stat.Stat.Name, stat.BaseStat)
+	}
+	fmt.Printf("Types:\n")
+
+	for _, stat := range entry.Types {
+		fmt.Printf("  -%s\n", stat.Type.Name)
+	}
 	return nil
 }
 
@@ -133,7 +154,7 @@ func main() {
 	app := App{
 		mapmove: MapMovement{},
 		cache:   pokecache.NewCache(7 * time.Second),
-		pokedex: Pokedex{},
+		pokedex: make(Pokedex),
 	}
 
 	commands := map[string]cliCommand{
@@ -168,6 +189,11 @@ func main() {
 			name:        "catch",
 			description: "try to catch a pokemon",
 			callback:    commandCatch,
+		},
+		"inspect": {
+			name:        "inspect",
+			description: "display the pokedex entries",
+			callback:    commandInspect,
 		},
 	}
 

@@ -25,8 +25,25 @@ type PokemonLocation struct {
 	} `json:"pokemon_encounters"`
 }
 
-type PokemonStats struct {
-	BaseExperince int `json:"base_experience"`
+type PokemonInfo struct {
+	Height         int           `json:"height"`
+	Weight         int           `json:"weight"`
+	Stats          []PokemonStat `json:"stats"`
+	Types          []PokemonType `json:"types"`
+	BaseExperience int           `json:"base_experience"`
+}
+
+type PokemonStat struct {
+	BaseStat int `json:"base_stat"`
+	Stat     struct {
+		Name string `json:"name"`
+	} `json:"stat"`
+}
+
+type PokemonType struct {
+	Type struct {
+		Name string `json:"name"`
+	} `json:"type"`
 }
 
 func GetLocation(fullURL string, cache *pokecache.Cache) (AvailableLocations, error) {
@@ -100,7 +117,7 @@ func GetPokemonInLocation(placeName string, cache *pokecache.Cache) (PokemonLoca
 
 }
 
-func CatchPokemon(pokemonName string, cache *pokecache.Cache) (int, error) {
+func CatchPokemon(pokemonName string, cache *pokecache.Cache) (PokemonInfo, error) {
 	fullURL := "https://pokeapi.co/api/v2/pokemon/" + pokemonName
 	var respBytes []byte
 
@@ -109,26 +126,26 @@ func CatchPokemon(pokemonName string, cache *pokecache.Cache) (int, error) {
 	if cacheHit == false {
 		resp, err := http.Get(fullURL)
 		if err != nil {
-			return -1, fmt.Errorf("http connection error: %w", err)
+			return PokemonInfo{}, fmt.Errorf("http connection error: %w", err)
 		}
 		defer resp.Body.Close()
 
 		if resp.StatusCode != http.StatusOK {
-			return -1, fmt.Errorf("%s not found", pokemonName)
+			return PokemonInfo{}, fmt.Errorf("%s not found", pokemonName)
 		}
 
 		respBytes, err = io.ReadAll(resp.Body)
 		if err != nil {
-			return -1, fmt.Errorf("cannot read http data: %w", err)
+			return PokemonInfo{}, fmt.Errorf("cannot read http data: %w", err)
 		}
 		cache.Add(fullURL, respBytes)
 	}
 
-	var response PokemonStats
+	var response PokemonInfo
 	err := json.Unmarshal(respBytes, &response)
 	if err != nil {
-		return -1, fmt.Errorf("cannot unmarshal data: %w", err)
+		return PokemonInfo{}, fmt.Errorf("cannot unmarshal data: %w", err)
 	}
 
-	return response.BaseExperince, nil
+	return response, nil
 }
