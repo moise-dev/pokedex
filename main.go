@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"errors"
 	"fmt"
+	"math/rand"
 	"os"
 	"strings"
 	"time"
@@ -95,6 +96,25 @@ func commandExplore(c *Config, cache *pokecache.Cache, locationName ...string) e
 	return err
 }
 
+func commandCatch(c *Config, cache *pokecache.Cache, pokemonName ...string) error {
+	experience, err := api.CatchPokemon(pokemonName[1], cache)
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("Throwing a Pokeball at %s...\n", pokemonName[1])
+	caughtChance := rand.Intn(experience)
+	if caughtChance > experience/2 {
+		fmt.Printf("%s was caught!\n", pokemonName[1])
+
+	} else {
+		fmt.Printf("%s escaped!\n", pokemonName[1])
+
+	}
+
+	return nil
+}
+
 func main() {
 	var config Config
 	cache := pokecache.NewCache(7 * time.Second)
@@ -126,6 +146,11 @@ func main() {
 			name:        "explore",
 			description: "return pokemons in a certain area",
 			callback:    commandExplore,
+		},
+		"catch": {
+			name:        "catch",
+			description: "try to catch a pokemon",
+			callback:    commandCatch,
 		},
 	}
 

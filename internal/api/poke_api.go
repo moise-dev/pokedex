@@ -2,14 +2,14 @@ package api
 
 import (
 	"encoding/json"
-	"errors"
+	"fmt"
 	"io"
 	"net/http"
 
 	"github.com/moise-dev/pokedex/internal/pokecache"
 )
 
-type Map struct {
+type AvailableLocations struct {
 	Next    *string `json:"next"`
 	Prev    *string `json:"previous"`
 	Results []struct {
@@ -25,7 +25,11 @@ type PokemonLocation struct {
 	} `json:"pokemon_encounters"`
 }
 
-func GetLocation(fullURL string, cache *pokecache.Cache) (Map, error) {
+type PokemonStats struct {
+	BaseExperince int `json:"base_experience"`
+}
+
+func GetLocation(fullURL string, cache *pokecache.Cache) (AvailableLocations, error) {
 	if fullURL == "" {
 		fullURL = "https://pokeapi.co/api/v2/location-area/"
 	}
@@ -37,7 +41,7 @@ func GetLocation(fullURL string, cache *pokecache.Cache) (Map, error) {
 	if cacheHit == false {
 		resp, err := http.Get(fullURL)
 		if err != nil {
-			return Map{}, errors.New("http connection error")
+			return AvailableLocations{}, fmt.Errorf("http connection error: %w", err)
 		}
 
 		defer resp.Body.Close()
@@ -45,15 +49,15 @@ func GetLocation(fullURL string, cache *pokecache.Cache) (Map, error) {
 		respBytes, err = io.ReadAll(resp.Body)
 
 		if err != nil {
-			return Map{}, errors.New("cannot read http data")
+			return AvailableLocations{}, fmt.Errorf("cannot read http data: %w", err)
 		}
 		cache.Add(fullURL, respBytes)
 	}
 
-	var response Map
+	var response AvailableLocations
 	err := json.Unmarshal(respBytes, &response)
 	if err != nil {
-		return Map{}, errors.New("cannot unmarshal data")
+		return AvailableLocations{}, fmt.Errorf("cannot unmarshal data: %w", err)
 	}
 
 	return response, nil
@@ -70,13 +74,17 @@ func GetPokemonInLocation(placeName string, cache *pokecache.Cache) (PokemonLoca
 	if cacheHit == false {
 		resp, err := http.Get(fullURL)
 		if err != nil {
-			return PokemonLocation{}, errors.New("http connection error")
+			return PokemonLocation{}, fmt.Errorf("http connection error: %w", err)
 		}
 		defer resp.Body.Close()
 
+		if resp.StatusCode != http.StatusOK {
+			return PokemonLocation{}, fmt.Errorf("%s not found", placeName)
+		}
+
 		respBytes, err = io.ReadAll(resp.Body)
 		if err != nil {
-			return PokemonLocation{}, errors.New("cannot read http data")
+			return PokemonLocation{}, fmt.Errorf("cannot read http data: %w", err)
 		}
 
 		cache.Add(fullURL, respBytes)
@@ -85,9 +93,42 @@ func GetPokemonInLocation(placeName string, cache *pokecache.Cache) (PokemonLoca
 	var response PokemonLocation
 	err := json.Unmarshal(respBytes, &response)
 	if err != nil {
-		return PokemonLocation{}, errors.New("cannot unmarshal data")
+		return PokemonLocation{}, fmt.Errorf("cannot unmarshal data: %w", err)
 	}
 
 	return response, nil
 
+}
+
+func CatchPokemon(pokemonName string, cache *pokecache.Cache) (int, error) {
+	fullURL := "https://pokeapi.co/api/v2/pokemon/" + pokemonName
+	var respBytes []byte
+
+	respBytes, cacheHit := cache.Get(fullURL)
+
+	if cacheHit == false {
+		resp, err := http.Get(fullURL)
+		if err != nil {
+			return -1, fmt.Errorf("http connection error: %w", err)
+		}
+		defer resp.Body.Close()
+
+		if resp.StatusCode != http.StatusOK {
+			return -1, fmt.Errorf("%s not found", pokemonName)
+		}
+
+		respBytes, err = io.ReadAll(resp.Body)
+		if err != nil {
+			return -1, fmt.Errorf("cannot read http data: %w", err)
+		}
+		cache.Add(fullURL, respBytes)
+	}
+
+	var response PokemonStats
+	err := json.Unmarshal(respBytes, &response)
+	if err != nil {
+		return -1, fmt.Errorf("cannot unmarshal data: %w", err)
+	}
+
+	return response.BaseExperince, nil
 }
