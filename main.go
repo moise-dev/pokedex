@@ -13,53 +13,67 @@ import (
 	"github.com/moise-dev/pokedex/internal/pokecache"
 )
 
-type Config struct {
+type MapMovement struct {
 	prev string
 	next string
+}
+
+type Pokemon struct {
+	name string
+}
+
+type Pokedex map[string]Pokemon
+
+type App struct {
+	mapmove MapMovement
+	cache   pokecache.Cache
+	pokedex Pokedex
 }
 
 type cliCommand struct {
 	name        string
 	description string
-	callback    func(*Config, *pokecache.Cache, ...string) error
+	callback    func(*App, ...string) error
 }
 
 func cleanInput(text string) []string {
 	return strings.Split(strings.TrimSpace(strings.ToLower(text)), " ")
 
 }
-func commandExit(c *Config, cache *pokecache.Cache, args ...string) error {
+func commandExit(app *App, args ...string) error {
 	fmt.Printf("Closing the Pokedex... Goodbye!")
 	os.Exit(0)
 	return nil
 }
 
-func commandHelp(c *Config, cache *pokecache.Cache, args ...string) error {
+func commandHelp(app *App, args ...string) error {
 	fmt.Println(`Welcome to the Pokedex!
 	Usage:
 
-	help:  Displays a help message
-	map:   Display 20 locations
-	mapb:  Display previous 20 locations
-	exit:  Exit the Pokedex`)
+	help:     Displays a help message
+	catch:    Try to catch a pokemon
+	explore:  See which pokemons are in an area
+	map:      Display 20 locations
+	mapb:     Display previous 20 locations
+	exit:     Exit the Pokedex`)
 	return nil
 
 }
 
-func commandMapGeneric(c *Config, cache *pokecache.Cache, url string) error {
-	response, err := api.GetLocation(url, cache)
+func commandMapGeneric(app *App, url string) error {
+	response, err := api.GetLocation(url, &app.cache)
 	if err != nil {
 		return err
 	}
 
-	c.prev = ""
-	c.next = ""
+	app.mapmove.prev = ""
+	app.mapmove.next = ""
 	if response.Prev != nil {
-		c.prev = *response.Prev
+		app.mapmove.prev = *response.Prev
 	}
 
 	if response.Next != nil {
-		c.next = *response.Next
+		app.mapmove.next = *response.Next
 	}
 
 	for _, city := range response.Results {
@@ -69,25 +83,25 @@ func commandMapGeneric(c *Config, cache *pokecache.Cache, url string) error {
 	return nil
 }
 
-func commandMapBack(c *Config, cache *pokecache.Cache, args ...string) error {
-	err := commandMapGeneric(c, cache, c.prev)
+func commandMapBack(app *App, args ...string) error {
+	err := commandMapGeneric(app, app.mapmove.prev)
 	return err
 
 }
 
-func commandMapNext(c *Config, cache *pokecache.Cache, args ...string) error {
-	err := commandMapGeneric(c, cache, c.next)
+func commandMapNext(app *App, args ...string) error {
+	err := commandMapGeneric(app, app.mapmove.next)
 	return err
 
 }
 
-func commandExplore(c *Config, cache *pokecache.Cache, locationName ...string) error {
+func commandExplore(app *App, locationName ...string) error {
 
 	if len(locationName) != 2 {
 		return errors.New("no location or too many locations provided")
 	}
 
-	data, err := api.GetPokemonInLocation(locationName[1], cache)
+	data, err := api.GetPokemonInLocation(locationName[1], &app.cache)
 
 	for _, encounter := range data.Encounters {
 		fmt.Println(encounter.Pokemon.Name)
@@ -96,8 +110,8 @@ func commandExplore(c *Config, cache *pokecache.Cache, locationName ...string) e
 	return err
 }
 
-func commandCatch(c *Config, cache *pokecache.Cache, pokemonName ...string) error {
-	experience, err := api.CatchPokemon(pokemonName[1], cache)
+func commandCatch(app *App, pokemonName ...string) error {
+	experience, err := api.CatchPokemon(pokemonName[1], &app.cache)
 	if err != nil {
 		return err
 	}
@@ -116,8 +130,11 @@ func commandCatch(c *Config, cache *pokecache.Cache, pokemonName ...string) erro
 }
 
 func main() {
-	var config Config
-	cache := pokecache.NewCache(7 * time.Second)
+	app := App{
+		mapmove: MapMovement{},
+		cache:   pokecache.NewCache(7 * time.Second),
+		pokedex: Pokedex{},
+	}
 
 	commands := map[string]cliCommand{
 		"exit": {
@@ -169,7 +186,7 @@ func main() {
 			continue
 		}
 
-		err := command.callback(&config, &cache, cleanText...)
+		err := command.callback(&app, cleanText...)
 		if err != nil {
 			fmt.Println(err)
 			os.Exit(1)
