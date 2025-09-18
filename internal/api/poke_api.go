@@ -31,6 +31,7 @@ type PokemonInfo struct {
 	Stats          []PokemonStat `json:"stats"`
 	Types          []PokemonType `json:"types"`
 	BaseExperience int           `json:"base_experience"`
+	Name           string        `json:"name"`
 }
 
 type PokemonStat struct {

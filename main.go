@@ -150,6 +150,21 @@ func commandInspect(app *App, pokemonName ...string) error {
 	return nil
 }
 
+func commandPokedex(app *App, args ...string) error {
+	if len(app.pokedex) == 0 {
+		fmt.Printf("Your Pokedex is empty.\n")
+		return nil
+	}
+
+	fmt.Printf("Your Pokedex:\n")
+	for _, entry := range app.pokedex {
+		fmt.Printf("  - %s\n", entry.Name)
+	}
+
+	return nil
+
+}
+
 func main() {
 	app := App{
 		mapmove: MapMovement{},
@@ -192,8 +207,14 @@ func main() {
 		},
 		"inspect": {
 			name:        "inspect",
-			description: "display the pokedex entries",
+			description: "display a pokedex entry",
 			callback:    commandInspect,
+		},
+
+		"pokedex": {
+			name:        "pokedex",
+			description: "display all the caught pokemon's names",
+			callback:    commandPokedex,
 		},
 	}
 
