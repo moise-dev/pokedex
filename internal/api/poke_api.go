@@ -2,6 +2,7 @@ package api
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -97,7 +98,8 @@ func GetPokemonInLocation(placeName string, cache *pokecache.Cache) (PokemonLoca
 		defer resp.Body.Close()
 
 		if resp.StatusCode != http.StatusOK {
-			return PokemonLocation{}, fmt.Errorf("%s not found", placeName)
+			fmt.Printf("Location %s not found", placeName)
+			return PokemonLocation{}, errors.New("not found")
 		}
 
 		respBytes, err = io.ReadAll(resp.Body)
@@ -132,7 +134,8 @@ func CatchPokemon(pokemonName string, cache *pokecache.Cache) (PokemonInfo, erro
 		defer resp.Body.Close()
 
 		if resp.StatusCode != http.StatusOK {
-			return PokemonInfo{}, fmt.Errorf("%s not found", pokemonName)
+			fmt.Printf("Pokemon %s not found", pokemonName)
+			return PokemonInfo{}, errors.New("not found")
 		}
 
 		respBytes, err = io.ReadAll(resp.Body)

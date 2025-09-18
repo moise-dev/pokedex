@@ -98,20 +98,32 @@ func commandExplore(app *App, locationName ...string) error {
 	}
 
 	data, err := api.GetPokemonInLocation(locationName[1], &app.cache)
+	if err != nil {
+		if err.Error() == "not found" {
+			fmt.Printf("\n")
+			return nil
+		}
+		return err
+	}
 
 	for _, encounter := range data.Encounters {
 		fmt.Println(encounter.Pokemon.Name)
 	}
 
-	return err
+	return nil
 }
 
 func commandCatch(app *App, pokemonName ...string) error {
 	name := pokemonName[1]
 	pokemonInfo, err := api.CatchPokemon(name, &app.cache)
 	if err != nil {
+		if err.Error() == "not found" {
+			fmt.Printf("\n")
+			return nil
+		}
 		return err
 	}
+
 	experience := pokemonInfo.BaseExperience
 
 	fmt.Printf("Throwing a Pokeball at %s...\n", name)
